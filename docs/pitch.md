@@ -32,8 +32,6 @@ On ETH, using the exact same frozen parameters tuned on BTC, TrendGuard produced
 
 Watch the Streamlit app pick between BTC/ETH and train/test periods live, compare all three strategies (TrendGuard, RSI mean-reversion, Buy & Hold) on one equity curve, and see an AI-generated plain-English report grounded strictly in the real backtest numbers.
 
-## Slide 8: Team / Next Steps
 
-Team: [insert names/roles].
 
 Next steps: multi-asset expansion with independent parameter tuning per asset (informed directly by our ETH finding), live paper trading to validate against real-time execution, walk-forward re-optimization instead of a single static train/test split, and further robustness testing across the full parameter grid.
