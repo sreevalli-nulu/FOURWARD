@@ -1,0 +1,13 @@
+## TrendGuard Strategy Backtest Report
+
+### 1. What the Strategy Does
+TrendGuard is a trend-following system that buys when a fast 20-period Exponential Moving Average (EMA) crosses above a slow 50-period EMA, signalling upward momentum. It exits either when the opposite crossover occurs or when price falls more than 3x the Average True Range (ATR) below the recent high — a trailing stop designed to limit losses.
+
+### 2. Risk-Adjusted Comparison vs Buy-and-Hold
+In the **test period**, TrendGuard delivered a CAGR of 10.7%, meaningfully below buy-and-hold's 24.8%. Its Sharpe ratio (a measure of return per unit of risk) was 0.50, compared to buy-and-hold's 0.70. The Sortino ratio (which penalises only downside volatility) came in at 0.47 versus buy-and-hold's 1.07 — a notable underperformance. The Calmar ratio (CAGR divided by maximum drawdown) was 0.33 against buy-and-hold's 0.47. On the positive side, the strategy's maximum drawdown was -32.3%, which is shallower than buy-and-hold's -53.0%, and market exposure was only 36%, meaning capital was deployed roughly one-third of the time.
+
+### 3. Train-vs-Test Honesty
+Performance degrades substantially from training to testing. The training CAGR was 57.1% versus 10.7% in testing. The Sharpe fell from 1.34 to 0.50, the Sortino from 1.15 to 0.47, and the Calmar from 1.50 to 0.33. Final equity dropped from ~$95,885 to ~$13,199. This is a significant deterioration and suggests the strategy may be overfitted to the training period.
+
+### 4. Where It Fails
+This strategy struggles in choppy, sideways markets where EMAs frequently cross back and forth, generating repeated false signals and small losses. It also lags in fast-trending markets since EMAs are inherently delayed indicators. Periods of sudden sharp reversals can breach the ATR stop before a meaningful trend develops.
