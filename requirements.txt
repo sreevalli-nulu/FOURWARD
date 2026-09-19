@@ -6,3 +6,4 @@ streamlit
 anthropic
 pytest
 python-dotenv
+streamlit-autorefresh

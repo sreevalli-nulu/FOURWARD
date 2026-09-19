@@ -5,8 +5,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-
-
+from data.live_feed import fetch_current_price, fetch_recent_candles, build_recommendation
 from backtest.strategies import trendguard_signals, rsi_meanrev_signals, buy_hold_signals
 from backtest.engine import run_backtest
 from backtest.metrics import metrics
@@ -14,6 +13,8 @@ from ai.report import explain_strategy
 from monitoring.trade_logger import log_all_trades
 from monitoring.self_heal import check_and_respond
 from monitoring.health_check import health_summary
+from monitoring.live_paper_trader import update_live_ledger, get_ledger_summary
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="TrendGuard", layout="wide")
 st.title("TrendGuard — Crypto Trading Strategy Backtest")
@@ -40,7 +41,7 @@ def run_all(data):
     }
     return {name: run_backtest(data, pos, fee=fee) for name, pos in strategies.items()}
 
-tab1, tab2, tab3 = st.tabs(["Backtest", "AI Risk Report", "System Health"])
+tab1, tab2, tab3, tab4 = st.tabs(["Backtest", "AI Risk Report", "System Health", "Live Signal"])
 
 with tab1:
     period = st.radio("Period", ["Train (2019–2023)", "Test (2024–now)", "Full"], horizontal=True)
@@ -115,3 +116,56 @@ with tab3:
                     st.success("No re-tuning needed.")
     except FileNotFoundError:
         st.info("No trades logged yet — run a backtest in the Backtest tab first.")
+
+with tab4:
+    st_autorefresh(interval=60000, key="live_refresh")
+    st.subheader("Live Signal — Real-Time Market Data")
+    st.write("Pulls current market data and shows what TrendGuard would decide right now. This is a live paper simulation, not real trading.")
+
+    live_asset = st.selectbox("Asset (live)", ["BTC", "ETH"], key="live_asset")
+    st.caption("Auto-refreshing every 60 seconds.")
+
+    try:
+        current = fetch_current_price(live_asset)
+        df_live = fetch_recent_candles(live_asset, timeframe="1d", limit=250)
+        live_signals = trendguard_signals(df_live, 10, 50, 3)
+        current_position = live_signals.iloc[-1]
+
+        update_live_ledger(live_asset, current_position, current["price"])
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric(f"{live_asset} current price", f"${current['price']:,.2f}")
+        col2.metric("Position", "IN (long)" if current_position == 1 else "OUT (flat)")
+        col3.metric("As of", current["timestamp"][:19].replace("T", " ") + " UTC")
+
+        rec = build_recommendation(live_signals, current["price"])
+        if rec["color"] == "success":
+            st.success(f"**{rec['status']}**\n\n{rec['message']}")
+        elif rec["color"] == "warning":
+            st.warning(f"**{rec['status']}**\n\n{rec['message']}")
+        else:
+            st.info(f"**{rec['status']}**\n\n{rec['message']}")
+
+        st.caption("This is an informational signal based on the strategy's own rules, not financial advice. It shows what the strategy indicates - any decision to act is yours.")
+
+        st.subheader("Live Paper-Trading Ledger")
+        ledger_summary = get_ledger_summary()
+        lcol1, lcol2, lcol3 = st.columns(3)
+        lcol1.metric("Virtual capital", f"${ledger_summary['current_capital']:,.2f}",
+                     f"{(ledger_summary['current_capital'] / ledger_summary['starting_capital'] - 1) * 100:+.2f}%")
+        lcol2.metric("Closed trades", ledger_summary["num_closed_trades"])
+        lcol3.metric("Open position", "Yes" if ledger_summary["open_position"] else "No")
+
+        if ledger_summary["closed_trades"]:
+            st.dataframe(pd.DataFrame(ledger_summary["closed_trades"]))
+        else:
+            st.caption("No trades completed yet in live tracking - this builds up over time as the signal changes.")
+
+        fig_live = go.Figure()
+        fig_live.add_trace(go.Scatter(x=df_live.index, y=df_live["close"], mode="lines", name="Price"))
+        fig_live.update_layout(title=f"{live_asset} — Last 250 Days (Live)", height=400)
+        st.plotly_chart(fig_live, use_container_width=True)
+
+        st.caption("This shows what the strategy would decide right now, using real current market data. It is a paper simulation only — no real trades are placed.")
+    except Exception as e:
+        st.error(f"Could not fetch live data: {e}")

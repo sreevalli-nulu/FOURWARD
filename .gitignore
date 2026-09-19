@@ -5,3 +5,5 @@ data/cache/*.parquet
 
 .idea/
 monitoring/trade_log.jsonl
+
+monitoring/live_paper_ledger.json
