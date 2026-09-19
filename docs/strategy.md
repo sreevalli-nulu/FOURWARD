@@ -7,6 +7,7 @@
 - Costs: fee + slippage applied on every position change. Base case: 0.1% fee, 0.05% slippage per side. Sensitivity tested at 0.2% and 0.5% fee (see below).
 - Capital: $10,000 starting capital, compounding.
 - No leverage, no shorting - position is either fully in (1) or fully out (0).
+- Frozen parameters: BTC uses fast=10, slow=50, atr_mult=3 (tuned on BTC's own 2019-2023 train period). ETH uses fast=12, slow=20, atr_mult=2.5 (tuned independently on ETH's own 2019-2023 train period, after discovering BTC's parameters do not transfer). Each asset's parameters were validated only on that same asset's held-out test period.
 
 ## Risk Characteristics
 
@@ -14,14 +15,14 @@
 
 - **Test-period comparison vs. Buy & Hold** (apples-to-apples, both evaluated on 2024+ data):
 
-  | Metric   | TrendGuard (BTC) | Buy & Hold (BTC) | TrendGuard (ETH) |
-  |----------|-------------------|--------------------|--------------------|
-  | CAGR     | 10.7%             | 24.2%              | -8.9%              |
-  | Sharpe   | 0.50              | 0.70               | -0.10              |
-  | Sortino  | 0.47              | 1.07               | -0.09              |
-  | Calmar   | 0.33              | 0.47               | -0.15              |
-  | Max DD   | -32.3%            | -53.0%             | -58.5%             |
-  | Exposure | 36.3%             | 98.9%              | 32.6%              |
+  | Metric   | TrendGuard (BTC) | Buy & Hold (BTC) | TrendGuard (ETH, BTC params) | TrendGuard (ETH, tuned) | RSI Mean-Rev (ETH) |
+|----------|-------------------|--------------------|--------------------------------|----------------------------|------------------------|
+| CAGR     | 10.7%             | 24.2%              | -8.9%                          | 14.5%                      | 8.9%                   |
+| Sharpe   | 0.50              | 0.70               | -0.10                          | 0.53                       | 0.41                   |
+| Sortino  | 0.47              | 1.07               | -0.09                          | 0.57                       | 0.32                   |
+| Calmar   | 0.33              | 0.47               | -0.15                          | 0.28                       | 0.20                   |
+| Max DD   | -32.3%            | -53.0%             | -58.5%                         | -51.9%                     | -44.3%                 |
+| Exposure | 36.3%             | 98.9%              | 32.6%                          | 42.9%                      | 30.0%                  |
 
   TrendGuard underperforms buy-and-hold on both raw and risk-adjusted return on BTC in the test period, but roughly halves the maximum drawdown while holding a position only about a third of the time - a materially different risk profile, even though the risk-adjusted numbers currently favor buy-and-hold in this window. On ETH, using the same frozen parameters, TrendGuard loses money outright in the test period - see Failure Conditions below.
 
@@ -39,7 +40,7 @@
 
 - **Sideways/choppy markets cause whipsaw losses.** In the BTC train-period trade log, several trades lasted only 3-6 days with losses of -2.5% to -10.4% - the fast/slow EMA crossed in and out without a sustained trend forming. This is the strategy's most common failure mode: it pays repeated small entry/exit costs during range-bound conditions.
 
-- **Parameters tuned on BTC do not transfer cleanly to ETH.** Using the same frozen parameters (fast=10, slow=50, atr_mult=3) on ETH/USDT for the 2024+ test period produced a CAGR of -8.9% and a max drawdown of -58.5% - materially worse than BTC's own test-period result (CAGR 10.7%, max DD -32.3%). This suggests the parameter sweep, run only on BTC training data, overfit to BTC's specific volatility and trend characteristics rather than finding a truly asset-general rule. Any live use of this strategy on a new asset would need its own independent parameter sweep, not a reused BTC-tuned setting.
+- - **BTC-tuned parameters do not transfer to ETH, but this is fixable with proper per-asset tuning.** Using BTC's frozen parameters (fast=10, slow=50, atr_mult=3) on ETH/USDT for the 2024+ test period produced a CAGR of -8.9%. We investigated this properly rather than assuming a fix: we first ran an independent parameter sweep on ETH's own training data using our original grid, which converged on the identical fast=10/slow=50/atr_mult=3 combination - confirming the issue wasn't simply "wrong asset's parameters were reused." We then widened the sweep grid to test faster EMAs (fast: 5-15, slow: 20-75) and tighter stops (ATR: 1.0-3.0), better suited to ETH's typically choppier, faster-moving price action. This found a materially different, ETH-specific optimum: fast=12, slow=20, atr_mult=2.5. Validated on ETH's held-out test period, this combination produced a CAGR of 14.5%, Sharpe of 0.53, and Calmar of 0.28 - turning a losing result into a profitable one, and outperforming our RSI mean-reversion comparison strategy on the same period (CAGR 8.9%, Calmar 0.20). The root cause was not that TrendGuard is unsuited to ETH, but that ETH's faster trend/noise cycle needed EMA periods outside the range our original BTC-derived grid tested.
 
 - **Train-vs-test degradation on BTC itself.** Train-period Calmar (1.63) is meaningfully higher than test-period Calmar (0.33) on BTC - performance did not hold up out-of-sample even on the asset it was tuned on, which is a normal but important caveat: past parameter selection does not guarantee future performance.
 

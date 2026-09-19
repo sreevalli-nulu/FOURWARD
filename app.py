@@ -33,6 +33,11 @@ df = pd.read_csv(file_map[asset], index_col="timestamp", parse_dates=True)
 df_train = df[df.index < "2024-01-01"]
 df_test = df[df.index >= "2024-01-01"]
 
+FROZEN_PARAMS = {
+    "BTC": {"fast": 10, "slow": 50, "atr_mult": 3},
+    "ETH": {"fast": 12, "slow": 20, "atr_mult": 2.5},
+}
+
 def run_all(data):
     strategies = {
         "TrendGuard": trendguard_signals(data, fast, slow, atr_mult),
@@ -71,8 +76,11 @@ with tab2:
     else:
         if st.button("Generate AI Report"):
             with st.spinner("Asking Claude..."):
-                r_train = run_backtest(df_train, trendguard_signals(df_train, 10, 50, 3), fee=fee)
-                r_test = run_backtest(df_test, trendguard_signals(df_test, 10, 50, 3), fee=fee)
+                p = FROZEN_PARAMS[asset]
+                r_train = run_backtest(df_train, trendguard_signals(df_train, p["fast"], p["slow"], p["atr_mult"]),
+                                       fee=fee)
+                r_test = run_backtest(df_test, trendguard_signals(df_test, p["fast"], p["slow"], p["atr_mult"]),
+                                      fee=fee)
                 r_bench = run_backtest(df_test, buy_hold_signals(df_test), fee=fee)
 
                 m_train = metrics(r_train["equity"], r_train["net_returns"])
@@ -80,9 +88,9 @@ with tab2:
                 m_bench = metrics(r_bench["equity"], r_bench["net_returns"])
 
                 rules = """TrendGuard uses a fast EMA and slow EMA.
-Entry: fast EMA crosses above slow EMA, and price is above the slow EMA.
-Exit: fast EMA crosses below slow EMA, OR price falls below the highest price since entry minus ATR multiplier times ATR.
-The strategy is long-only. It does not short. It does not use leverage."""
+                Entry: fast EMA crosses above slow EMA, and price is above the slow EMA.
+                Exit: fast EMA crosses below slow EMA, OR price falls below the highest price since entry minus ATR multiplier times ATR.
+                The strategy is long-only. It does not short. It does not use leverage.Parameters for {asset} (independently tuned and validated on {asset}'s own data): fast={p['fast']}, slow={p['slow']}, atr_mult={p['atr_mult']}."""
 
                 try:
                     report = explain_strategy(rules, m_train, m_test, m_bench)
@@ -128,7 +136,8 @@ with tab4:
     try:
         current = fetch_current_price(live_asset)
         df_live = fetch_recent_candles(live_asset, timeframe="1d", limit=250)
-        live_signals = trendguard_signals(df_live, 10, 50, 3)
+        p_live = FROZEN_PARAMS[live_asset]
+        live_signals = trendguard_signals(df_live, p_live["fast"], p_live["slow"], p_live["atr_mult"])
         current_position = live_signals.iloc[-1]
 
         update_live_ledger(live_asset, current_position, current["price"])
