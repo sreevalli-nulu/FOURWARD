@@ -21,8 +21,11 @@ pip install -r requirements.txt
 ```
 
 Set your Anthropic API key (needed only for the AI Risk Report tab):
-```powershell
-$env:LLM_API_KEY = "your-key-here"
+
+Create a file named `.env` in the project root (a template is provided as `.env.example`) containing:
+LLM_API_KEY=your-key-here
+This loads automatically every time the app runs - no manual environment variable needed.
+
 ```
 
 ## Run it

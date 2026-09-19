@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 
@@ -62,29 +65,32 @@ with tab1:
 with tab2:
     st.write("Generates a plain-English risk report using the frozen parameters (fast=10, slow=50, atr_mult=3).")
 
-    if st.button("Generate AI Report"):
-        with st.spinner("Asking Claude..."):
-            r_train = run_backtest(df_train, trendguard_signals(df_train, 10, 50, 3), fee=fee)
-            r_test = run_backtest(df_test, trendguard_signals(df_test, 10, 50, 3), fee=fee)
-            r_bench = run_backtest(df_test, buy_hold_signals(df_test), fee=fee)
+    if not os.environ.get("LLM_API_KEY") and not os.environ.get("ANTHROPIC_API_KEY"):
+        st.warning("No API key found. Create a `.env` file in the project root with `LLM_API_KEY=your-key-here` to enable this tab. See README.md for setup instructions.")
+    else:
+        if st.button("Generate AI Report"):
+            with st.spinner("Asking Claude..."):
+                r_train = run_backtest(df_train, trendguard_signals(df_train, 10, 50, 3), fee=fee)
+                r_test = run_backtest(df_test, trendguard_signals(df_test, 10, 50, 3), fee=fee)
+                r_bench = run_backtest(df_test, buy_hold_signals(df_test), fee=fee)
 
-            m_train = metrics(r_train["equity"], r_train["net_returns"])
-            m_test = metrics(r_test["equity"], r_test["net_returns"])
-            m_bench = metrics(r_bench["equity"], r_bench["net_returns"])
+                m_train = metrics(r_train["equity"], r_train["net_returns"])
+                m_test = metrics(r_test["equity"], r_test["net_returns"])
+                m_bench = metrics(r_bench["equity"], r_bench["net_returns"])
 
-            rules = """TrendGuard uses a fast EMA and slow EMA.
+                rules = """TrendGuard uses a fast EMA and slow EMA.
 Entry: fast EMA crosses above slow EMA, and price is above the slow EMA.
 Exit: fast EMA crosses below slow EMA, OR price falls below the highest price since entry minus ATR multiplier times ATR.
 The strategy is long-only. It does not short. It does not use leverage."""
 
-            try:
-                report = explain_strategy(rules, m_train, m_test, m_bench)
-                st.success("Report generated")
-                st.write(report)
-            except Exception as e:
-                st.error(f"Could not generate report: {e}")
-    else:
-        st.info("Click the button to generate a fresh AI risk report using live backtest metrics.")
+                try:
+                    report = explain_strategy(rules, m_train, m_test, m_bench)
+                    st.success("Report generated")
+                    st.write(report)
+                except Exception as e:
+                    st.error(f"Could not generate report: {e}")
+        else:
+            st.info("Click the button to generate a fresh AI risk report using live backtest metrics.")
 
 with tab3:
     st.subheader("System Health — Trade Recording & Adaptive Monitoring")

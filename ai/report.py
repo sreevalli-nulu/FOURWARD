@@ -1,12 +1,12 @@
 import os
 import anthropic
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env in the project root, if present
 
 api_key = os.environ.get("LLM_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
 
-if not api_key:
-    raise RuntimeError("No API key found. Set LLM_API_KEY or ANTHROPIC_API_KEY first.")
-
-client = anthropic.Anthropic(api_key=api_key)
+client = anthropic.Anthropic(api_key=api_key) if api_key else None
 
 
 SYSTEM_PROMPT = """You are writing a plain-English report on a crypto trading strategy backtest.
@@ -48,6 +48,9 @@ def explain_strategy(
     metrics_test: dict,
     bench: dict
 ) -> str:
+
+    if client is None:
+        raise RuntimeError("No API key found. Set LLM_API_KEY in a .env file.")
 
     user_content = f"""Strategy rules:
 {rules}
