@@ -48,3 +48,14 @@
 - **Sharp, fast crashes can still cause large drawdowns despite the trailing stop.** The ATR-based stop reacts to recent volatility, but a sudden, sharp move can still produce a large single-trade loss before the stop triggers, as seen in ETH's -58.5% max drawdown.
 
 - **Long-only design means no protection in sustained downtrends.** Since the strategy never shorts, extended bear markets are handled only by sitting in cash (0% exposure) - there's no mechanism to profit from, only avoid, a falling market.****
+
+
+## Trade Recording & Adaptive Monitoring
+
+Every backtest run persists its trades to an append-only log (`monitoring/trade_log.jsonl`), recording entry/exit dates, prices, realized return, holding period, and the exact strategy parameters active at the time of each trade. This creates a full, auditable history of every decision the strategy made.
+
+A monitoring layer (`monitoring/health_check.py`) reads this log back and tracks recent performance - specifically, the win rate over the last N trades - rather than relying on lifetime averages that can mask a recent shift in market behavior.
+
+If recent performance drops below a set threshold, a self-healing layer (`monitoring/self_heal.py`) automatically re-runs the existing parameter sweep on current data and proposes a new parameter set. This does **not** auto-apply the new parameters - it flags them for human review. We made this choice deliberately: a system that silently changes its own live trading parameters based on a short losing streak is a real risk, not just an implementation detail. Proposing, not auto-applying, keeps a human in the loop for any change that affects real capital.
+
+This closes the loop the rest of this document describes in static form: instead of a one-time backtest with fixed parameters, the system continuously records its own behavior, checks its own health, and knows when it should ask for re-tuning - the direction of a self-monitoring, adaptive strategy, without removing human oversight from the decision to actually change anything.

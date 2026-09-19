@@ -28,9 +28,15 @@ The 2024+ test period was a regime where simply holding outperformed trend-follo
 
 On ETH, using the exact same frozen parameters tuned on BTC, TrendGuard produced a negative CAGR (-8.9%) and a larger max drawdown (-58.5%) than on BTC. This is a concrete example of parameter overfitting - a rule tuned on one asset does not automatically generalize to another, and we're reporting that honestly rather than cherry-picking only the BTC result.
 
-## Slide 7: Live Demo Teaser
+## Slide 7: Adaptive Risk Monitoring
 
-Watch the Streamlit app pick between BTC/ETH and train/test periods live, compare all three strategies (TrendGuard, RSI mean-reversion, Buy & Hold) on one equity curve, and see an AI-generated plain-English report grounded strictly in the real backtest numbers.
+Every trade the strategy makes is logged persistently - entry, exit, return, and the exact parameters active at the time. A monitoring layer tracks recent win rate, not just lifetime averages, so it can catch a real shift in performance early.
+
+If recent performance degrades, the system automatically re-runs its own parameter sweep and proposes new parameters - but never applies them automatically. A human stays in the loop for any change to live trading behavior. This is TrendGuard's answer to "how would this keep working over time": not a static, fire-and-forget backtest, but a system that records its own activity and knows when to ask for help.
+
+## Slide 8: Live Demo Teaser
+
+Watch the Streamlit app pick between BTC/ETH and train/test periods live, compare all three strategies (TrendGuard, RSI mean-reversion, Buy & Hold) on one equity curve, see an AI-generated plain-English report grounded strictly in the real backtest numbers, and check the System Health tab showing real trade logs and a live self-check.
 
 
 
